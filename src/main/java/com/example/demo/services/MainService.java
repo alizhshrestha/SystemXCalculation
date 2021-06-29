@@ -570,6 +570,14 @@ public class MainService {
 		if (trshtlst.size() == 0) {
 			trshtlst = fullFill();
 		}
+		
+		if(repo.count()<=0) {
+			System.out.println("------------------Empty dataset--------------");
+		}else {
+			repo.deleteAll();
+			System.out.println("------------------Successfully deleted all data--------------");
+		}
+		
 		for (Tearsheetderivedtable t : trshtlst) {
 			repo.save(t);
 		}

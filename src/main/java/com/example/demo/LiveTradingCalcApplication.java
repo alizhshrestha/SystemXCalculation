@@ -115,6 +115,13 @@ public class LiveTradingCalcApplication implements CommandLineRunner{
 		Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
 		Statement stmt = conn.createStatement();
 		
+		try {
+			stmt.executeUpdate("TRUNCATE tearsheetderivedtable");
+			System.out.println("Successfully Truncate tearsheetderivedtable");
+		} catch (Exception e) {
+			// TODO: handle exception
+		}
+		
 		String QUERY;
 
 		while (tables.next()) {
