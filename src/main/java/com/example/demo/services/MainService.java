@@ -13,7 +13,11 @@ import com.example.demo.repositories.TearsheetderivedtableRepository;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -30,6 +34,7 @@ public class MainService {
 
 	// Filtered map list of latestpricelive table
 	List<Map<String, String>> mapList = new ArrayList<Map<String, String>>();
+	Map<String, Double> ltsClosingPriceMap = new HashMap<String, Double>();
 
 	@Autowired
 	TearsheetderivedtableRepository repo;
@@ -114,7 +119,7 @@ public class MainService {
 							amount = Double.valueOf(e.getRows().get(i).get("amount"));
 							volume = Double.valueOf(e.getRows().get(i).get("volume"));
 //							tearsht.setSector(e.getRows().get(i).get("SmtmSector"));
-							tearsht.setVolume(volume);
+							tearsht.setVolume(amount);
 							tradingDate = e.getRows().get(i).get("TRADING_DATE");
 							Date date1 = new SimpleDateFormat("yyyy-MM-dd").parse(tradingDate);
 //							System.out.println(tearsht.getTicker() +" Trading date: " + e.getRows().get(i).get("TRADING_DATE"));
@@ -146,12 +151,15 @@ public class MainService {
 		int dtcount = 1; // for previous dates calculation
 		int averagecount = 0; // for average calculation
 		Double averageClosingPrice = 0.0;
+		double latestclsPrice = 0.0;
 
 		// date of now
-		Date latest_date = new Date();
+		Date latest_date = today();
 		DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
 		boolean isLatest = false;
+		boolean isExists = false;
+		boolean isPending = false;
 
 		// filtering data according to table names
 		for (Entities e : allDataList) {
@@ -242,82 +250,8 @@ public class MainService {
 					}
 				}
 			}
-			
-			if (e.getTablename().equals("tearsheetpercentileindicatortable")) {
-				for (int i = 0; i < e.getRows().size(); i++) {
-					for (Tearsheetderivedtable tearsht : tearsheetList) {
-						if (tearsht.getTicker().equals(e.getRows().get(i).get("TICKER"))) {
-							if (e.getRows().get(i).get("DaysHighLow") != null) {
-//								tearsht.setRoa(Double.valueOf(e.getRows().get(i).get("roa_f")));
-								tearsht.setDaysHighLowPercentile(Double.valueOf(e.getRows().get(i).get("DaysHighLow")));
-							} else {
-								tearsht.setDaysHighLowPercentile(null);
-							}
-							
-							if (e.getRows().get(i).get("FiftyTwoWeekHighLow") != null) {
-//								tearsht.setRoa(Double.valueOf(e.getRows().get(i).get("roa_f")));
-								tearsht.setFiftyTwoHighLowPercentile(Double.valueOf(e.getRows().get(i).get("FiftyTwoWeekHighLow")));
-							} else {
-								tearsht.setFiftyTwoHighLowPercentile(null);
-							}
-
-						}
-					}
-				}
-			}
-			
-			
-			
-			
-			
-			
-			if (e.getTablename().equals("stock_price_actions_derived")) {
-				for (int i = 0; i < e.getRows().size(); i++) {
-					for (Tearsheetderivedtable tearsht : tearsheetList) {
-						if (tearsht.getTicker().equals(e.getRows().get(i).get("ticker"))) {
-							if (e.getRows().get(i).get("fifty_two_week_high") != null) {
-//								tearsht.setRoa(Double.valueOf(e.getRows().get(i).get("roa_f")));
-								tearsht.setFiftyHigh(Double.valueOf(e.getRows().get(i).get("fifty_two_week_high")));
-							} else {
-								tearsht.setFiftyHigh(null);
-							}
-							
-							if (e.getRows().get(i).get("fifty_two_week_low") != null) {
-//								tearsht.setRoa(Double.valueOf(e.getRows().get(i).get("roa_f")));
-								tearsht.setFiftyLow(Double.valueOf(e.getRows().get(i).get("fifty_two_week_low")));
-							} else {
-								tearsht.setFiftyLow(null);
-							}
-
-						}
-					}
-				}
-			}
-
-			if (e.getTablename().equals("latestprice")) {
-				for (int i = 0; i < e.getRows().size(); i++) {
-					for (Tearsheetderivedtable tearsht : tearsheetList) {
-						if (tearsht.getTicker().equals(e.getRows().get(i).get("TICKER"))) {
-							if (e.getRows().get(i).get("high") != null) {
-								tearsht.setDaysHigh(Double.valueOf(e.getRows().get(i).get("high")));
-							} else {
-								tearsht.setDaysHigh(null);
-							}
-
-							if (e.getRows().get(i).get("low") != null) {
-								tearsht.setDaysLow(Double.valueOf(e.getRows().get(i).get("low")));
-							} else {
-								tearsht.setDaysLow(null);
-							}
-
-						}
-
-					}
-				}
-			}
 
 			if (e.getTablename().equals("stock_data")) {
-
 				for (Tearsheetderivedtable tearsht : tearsheetList) {
 					double totalClosingPrice = 0.0;
 					double closingPrice = 0.0;
@@ -337,7 +271,8 @@ public class MainService {
 							Date tradeLatestDate = dateFormat.parse(tradeLatestDatestr);
 
 							String LatestDatestr = dateFormat.format(latest_date);
-							Date LatestDate = dateFormat.parse("2021-06-16");
+							Date LatestDate = dateFormat.parse(LatestDatestr);
+							// "2021-07-01"
 							String strDate = dateFormat.format(latest_date);
 							Date previousDate = getPreviousDate(strDate, dtcount);
 							dtcount++;
@@ -348,6 +283,11 @@ public class MainService {
 							if (tradeLatestDate.equals(LatestDate)) {
 								isLatest = true; // setting flag
 								currentTicker = e.getRows().get(i).get("ticker"); // current ticker from loop
+								latestclsPrice = Double.valueOf(e.getRows().get(i).get("closingPrice"));
+								ltsClosingPriceMap.put(currentTicker, latestclsPrice);
+//								
+//								System.out.println(currentTicker + " : " + ltsClosingPriceMap);
+
 							}
 
 							if (isLatest && currentTicker.equals(e.getRows().get(i).get("ticker"))) {
@@ -383,6 +323,54 @@ public class MainService {
 
 				}
 
+				System.out.println("......................out....................");
+
+			}
+
+			if (e.getTablename().equals("stock_price_actions_derived")) {
+				System.out.println("entered ");
+				for (int i = 0; i < e.getRows().size(); i++) {
+					for (Tearsheetderivedtable tearsht : tearsheetList) {
+						if (tearsht.getTicker().equals(e.getRows().get(i).get("ticker"))) {
+							if (e.getRows().get(i).get("fifty_two_week_high") != null) {
+//								tearsht.setRoa(Double.valueOf(e.getRows().get(i).get("roa_f")));
+								tearsht.setFiftyHigh(Double.valueOf(e.getRows().get(i).get("fifty_two_week_high")));
+							} else {
+								tearsht.setFiftyHigh(null);
+							}
+
+							if (e.getRows().get(i).get("fifty_two_week_low") != null) {
+//								tearsht.setRoa(Double.valueOf(e.getRows().get(i).get("roa_f")));
+								tearsht.setFiftyLow(Double.valueOf(e.getRows().get(i).get("fifty_two_week_low")));
+							} else {
+								tearsht.setFiftyLow(null);
+							}
+
+						}
+					}
+				}
+			}
+
+			if (e.getTablename().equals("latestprice")) {
+				for (int i = 0; i < e.getRows().size(); i++) {
+					for (Tearsheetderivedtable tearsht : tearsheetList) {
+						if (tearsht.getTicker().equals(e.getRows().get(i).get("TICKER"))) {
+							if (e.getRows().get(i).get("high") != null) {
+								tearsht.setDaysHigh(Double.valueOf(e.getRows().get(i).get("high")));
+							} else {
+								tearsht.setDaysHigh(null);
+							}
+
+							if (e.getRows().get(i).get("low") != null) {
+								tearsht.setDaysLow(Double.valueOf(e.getRows().get(i).get("low")));
+							} else {
+								tearsht.setDaysLow(null);
+							}
+
+						}
+
+					}
+				}
 			}
 
 		}
@@ -390,8 +378,83 @@ public class MainService {
 
 	}
 
-	public List<Map<String, Map<String, String>>> getEpsAnnualizedFullFill() throws ParseException {
+	public List<Tearsheetderivedtable> floorsheetLiveData() throws ParseException {
+		int count = 0;
 		List<Tearsheetderivedtable> tearsheetList = fullFill();
+
+		List<Entities> allDataList = getData();
+		Double daysHighLowPercentile = 0.0, fiftyTwoHighLowPercentile = 0.0, closingPrice = 0.0, totalRate = 0.0;
+		boolean isExists = false;
+		List<Double> rateList = new ArrayList<Double>();
+		List<Double> closingPriceList = new ArrayList<Double>();
+		
+		LocalDate today = LocalDate.now();
+		
+		//minus 52 week to the current date
+        LocalDate last52weeks = today.minus(52, ChronoUnit.WEEKS);
+		
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+		for (Tearsheetderivedtable tearsht : tearsheetList) {
+			for(Entities e : allDataList) {
+				if(e.getTablename().equals("floorsheet_live")) {
+					for(int i = 0; i < e.getRows().size(); i++) {
+						if(e.getRows().get(i).get("stockSymbol").equals(tearsht.getTicker())) {
+							rateList.add(Double.valueOf(e.getRows().get(i).get("rate")));
+						}
+					}
+					
+				}
+				
+				if(e.getTablename().equals("stock_data_adjusted")) {
+					for(int i = 0; i < e.getRows().size(); i++) {
+						if(e.getRows().get(i).get("ticker").equals(tearsht.getTicker())) {
+							
+//					        System.out.println("Current date: " + today);
+
+					        
+//					        System.out.println("Ticker: " + tearsht.getTicker() + "last 52 week: " + last52weeks);
+
+					        LocalDate localDate = LocalDate.parse((e.getRows().get(i).get("trading_date")), formatter);
+					        
+					        
+					        if(last52weeks.compareTo(localDate)<0) {
+					        	if(e.getRows().get(i).get("closingPrice")!=null) {
+					        		System.out.println("Ticker: " + tearsht.getTicker() + "Date: " + localDate +  "closing price: " +  e.getRows().get(i).get("closingPrice"));
+					        		closingPriceList.add(Double.valueOf(e.getRows().get(i).get("closingPrice")));
+					        	}
+					        }
+					        
+						}
+					}
+					
+				}
+			}
+			closingPrice = ltsClosingPriceMap.get(tearsht.getTicker());
+//			System.out.println("Ticker: " + tearsht.getTicker() + " Closing Price : " + closingPrice);
+			if(closingPrice!=null) {
+				daysHighLowPercentile = getPercentileDataSet(rateList,closingPrice).get(1);
+				fiftyTwoHighLowPercentile = getPercentileDataSet(closingPriceList,closingPrice).get(1);
+				System.out.println("Ticker: " + tearsht.getTicker() + " daysHighLowPercentile : " + daysHighLowPercentile);
+				System.out.println("Ticker: " + tearsht.getTicker() + " fiftyTwoHighLowPercentile : " + fiftyTwoHighLowPercentile);
+				tearsht.setDaysHighLowPercentile(daysHighLowPercentile);
+				tearsht.setFiftyTwoHighLowPercentile(fiftyTwoHighLowPercentile);
+			}
+//			System.out.println("Ticker: " + tearsht.getTicker() + " Count : " + count);
+//			count = 0;
+		}
+		
+
+		return tearsheetList;
+
+	}
+
+	public static boolean isNullOrEmptyMap(Map<?, ?> map) {
+		return (map == null || map.isEmpty());
+	}
+
+	public List<Map<String, Map<String, String>>> getEpsAnnualizedFullFill() throws ParseException {
+		List<Tearsheetderivedtable> tearsheetList = floorsheetLiveData();
 		Map<String, String> epsdetailMap = new HashMap<String, String>();
 		Map<String, Map<String, String>> epsMap = new HashMap<String, Map<String, String>>();
 		List<Map<String, Map<String, String>>> epsMapList = new ArrayList<Map<String, Map<String, String>>>();
@@ -460,10 +523,11 @@ public class MainService {
 		List<Entities> allDataList = getData();
 		List<Map<String, Map<String, String>>> epsMapList = getEpsAnnualizedFullFill();
 		Map<String, String> epsMapDetails = new HashMap<String, String>();
-		List<Tearsheetderivedtable> tearsheetList = fullFill();
+		List<Tearsheetderivedtable> tearsheetList = floorsheetLiveData();
 
 		String ticker = "";
-		Double epsAnnualized = 0.0, previousepsAnnualized = 0.0, profitabilityChange = 0.0, pe_d = 0.0, reportedPeAnnualized = 0.0, sentimentChange= 0.0;
+		Double epsAnnualized = 0.0, previousepsAnnualized = 0.0, profitabilityChange = 0.0, pe_d = 0.0,
+				reportedPeAnnualized = 0.0, sentimentChange = 0.0;
 
 		for (Tearsheetderivedtable tearsheet : tearsheetList) {
 			for (Map<String, Map<String, String>> tm : epsMapList) {
@@ -478,15 +542,24 @@ public class MainService {
 							previousepsAnnualized = Double.valueOf(epsMapDetails.get("previous_quater_eps"));
 						}
 
-						if(epsMapDetails.get("epsAnnualized") != null && epsMapDetails.get("previous_quater_eps") != null) {
-							profitabilityChange = (epsAnnualized / previousepsAnnualized) - 1;
-							tearsheet.setProfitabilityChange(profitabilityChange);
-						}else if(epsMapDetails.get("epsAnnualized") == null || epsMapDetails.get("previous_quater_eps") == null) {
+						if (epsMapDetails.get("epsAnnualized") != null
+								&& epsMapDetails.get("previous_quater_eps") != null) {
+//							profitabilityChange = (epsAnnualized / previousepsAnnualized) - 1;
+							profitabilityChange = (epsAnnualized - previousepsAnnualized)
+									/ Math.abs(previousepsAnnualized);
+							if (!(profitabilityChange.isNaN()) && previousepsAnnualized != 0.0) {
+								tearsheet.setProfitabilityChange(profitabilityChange);
+							} else {
+								System.out.println("profitabilityChange: " + profitabilityChange + " is Nan!!!");
+								profitabilityChange = null;
+								tearsheet.setProfitabilityChange(profitabilityChange);
+							}
+
+						} else if (epsMapDetails.get("epsAnnualized") == null
+								|| epsMapDetails.get("previous_quater_eps") == null) {
 							profitabilityChange = null;
 							tearsheet.setProfitabilityChange(profitabilityChange);
 						}
-						
-						
 
 					}
 
@@ -506,13 +579,22 @@ public class MainService {
 									for (Map.Entry<String, Map<String, String>> entry : tm.entrySet()) {
 										if (entry.getKey().equals(tearsht.getTicker())) {
 											epsMapDetails = entry.getValue();
-											
+
 											if (epsMapDetails.get("reportedPeAnnualized") != null) {
 												reportedPeAnnualized = Double
 														.valueOf(epsMapDetails.get("reportedPeAnnualized"));
-												sentimentChange = (pe_d / reportedPeAnnualized)-1;
-												tearsht.setSentimentChange(sentimentChange);
-											}else {
+//												(pe_D - ReportedPeAnnualized) / Absolute (ReportedPeAnnualized)
+												sentimentChange = (pe_d - reportedPeAnnualized) / Math.abs(reportedPeAnnualized);
+												if (!(sentimentChange.isNaN()) && reportedPeAnnualized != 0.0) {
+													tearsht.setSentimentChange(sentimentChange);
+												} else {
+													System.out.println(
+															"sentimentChange " + sentimentChange + " is Nan!!!");
+													sentimentChange = null;
+													tearsht.setSentimentChange(sentimentChange);
+												}
+
+											} else {
 												sentimentChange = null;
 												tearsht.setSentimentChange(sentimentChange);
 											}
@@ -568,16 +650,16 @@ public class MainService {
 	public String saveTearsheetDerivedTable() throws ParseException {
 		List<Tearsheetderivedtable> trshtlst = new ArrayList<Tearsheetderivedtable>();
 		if (trshtlst.size() == 0) {
-			trshtlst = fullFill();
+			trshtlst = calculateProfitabilityChange();
 		}
-		
-		if(repo.count()<=0) {
+
+		if (repo.count() <= 0) {
 			System.out.println("------------------Empty dataset--------------");
-		}else {
+		} else {
 			repo.deleteAll();
 			System.out.println("------------------Successfully deleted all data--------------");
 		}
-		
+
 		for (Tearsheetderivedtable t : trshtlst) {
 			repo.save(t);
 		}
@@ -596,20 +678,46 @@ public class MainService {
 		return cal.getTime();
 	}
 
-	public Date yesterday() {
+	public Date today() {
 		final Calendar cal = Calendar.getInstance();
-		cal.add(Calendar.DATE, -2);
+//		cal.add(Calendar.DATE, -1);
 		return cal.getTime();
 	}
 
 	public String getYesterdayDateString() {
 		DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
-		return dateFormat.format(yesterday());
+		return dateFormat.format(today());
 	}
 
 	// calculating difference between dates
 	public static long getDifferenceDays(Date d1, Date d2) {
 		long diff = d2.getTime() - d1.getTime();
 		return TimeUnit.DAYS.convert(diff, TimeUnit.MILLISECONDS);
+	}
+
+	static List<Double> getPercentileDataSet(List<Double> variableList, double variable) {
+		double upperBound = 0;
+		double lowerBound = 0;
+		double percentile = 0;
+		double position = 0;
+		for (int count = 0; count < variableList.size(); count++) {
+			// System.out.println("PerCompare:"+variable+":"+variableList.get(count));
+			if (variable == variableList.get(count)) {
+				// System.out.println("Yes");
+				position = (double) count + 1;
+			}
+		}
+		// System.out.println("Position:"+position);
+		if (variableList.size() > 0) {
+			percentile = (position / variableList.size()) * 100;
+			// System.out.println(percentile);
+			upperBound = variableList.get(variableList.size() - 1);
+			lowerBound = variableList.get(0);
+		}
+
+		List<Double> dataSet = new ArrayList<>();
+		dataSet.addAll(Arrays.asList(upperBound, percentile, lowerBound));
+
+		return dataSet;
 	}
 }

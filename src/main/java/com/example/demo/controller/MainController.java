@@ -48,6 +48,13 @@ public class MainController {
     	return service.fullFill();
     }
     
+    @GetMapping("/floorsheetLiveData")
+    public List<Tearsheetderivedtable> floorsheetLiveData() throws ParseException {
+    	return service.floorsheetLiveData();
+    }
+    
+    
+    
 //    @GetMapping("/getEpsAnnualizedFullFill")
 //    public List<Tearsheetderivedtable> getEpsAnnualizedFullFill() throws ParseException {
 //    	return service.getEpsAnnualizedFullFill();

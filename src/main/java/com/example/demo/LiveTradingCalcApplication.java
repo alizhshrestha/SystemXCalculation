@@ -36,69 +36,69 @@ public class LiveTradingCalcApplication implements CommandLineRunner{
         SpringApplication.run(LiveTradingCalcApplication.class, args);
     }
     
-//	public List<Entities> showLiveTradingTables() throws Exception {
-//		DatabaseMetaData metaData = dataSource.getConnection().getMetaData();
-//		ResultSet tables = metaData.getTables("livetrading", null, null, new String[] { "TABLE" });
-//		
-//		String DB_URL = "jdbc:mysql://localhost:3306/livetrading";
-//		String USER = "root";
-//		String PASS = "@1uis9818A";
-//
-//		int count = 0;
-//		int totalRecords = 0;
-//		
-//		Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-//		Statement stmt = conn.createStatement();
-//
-//		while (tables.next()) {
-//			String tableName = tables.getString("TABLE_NAME");
-//			ResultSet columns = metaData.getColumns("livetrading", null, tableName, "%");
-//			Entities ec = new Entities();
-//			List<Map<String,String>> mapList = new ArrayList<Map<String,String>>();
-//			Map<String, String> rowMap = new HashMap<String, String>();
-//
-//			List<String> columnsName = new ArrayList<String>();
-//
-//			String QUERY = "select * from " + tableName;
-//
-//			while (columns.next()) {
-//				String column = columns.getString("COLUMN_NAME");
-//				columnsName.add(column);
-//			}
-//			
-//			if(tableName.equals("latestpricelive")) {
-//				ec.setTablename(tableName);
-//				try {
-//					System.out.println("..................................."+tableName + ".................................");
-//					ResultSet rs = stmt.executeQuery(QUERY);
-//					while (rs.next()) {
-//						rowMap = new LinkedHashMap<String, String>();
-//						for(String s : columnsName) {
-//							String rowValue = rs.getString(s);
-//							rowMap.put(s, rowValue  );
-//							totalRecords++;
-//						}	
-//						mapList.add(rowMap);
-//						count++;
-//					}
-//					ec.setRows(mapList);
-//
-//				} catch (Exception e) {
-//					// TODO: handle exception
-//					e.printStackTrace();
-//				}
-//				allDataMap.add(ec);
-//				
-//			}else {
-//				
-//			}
-//	
-//		}
-//		
-//		System.out.println("Total Records: " + totalRecords);
-//		
-//		return allDataMap;
-//	}
+	public List<Entities> showLiveTradingTables() throws Exception {
+		DatabaseMetaData metaData = dataSource.getConnection().getMetaData();
+		ResultSet tables = metaData.getTables("livetrading", null, null, new String[] { "TABLE" });
+		
+		String DB_URL = "jdbc:mysql://localhost:3306/livetrading";
+		String USER = "root";
+		String PASS = "@1uis9818A";
+
+		int count = 0;
+		int totalRecords = 0;
+		
+		Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+		Statement stmt = conn.createStatement();
+
+		while (tables.next()) {
+			String tableName = tables.getString("TABLE_NAME");
+			ResultSet columns = metaData.getColumns("livetrading", null, tableName, "%");
+			Entities ec = new Entities();
+			List<Map<String,String>> mapList = new ArrayList<Map<String,String>>();
+			Map<String, String> rowMap = new HashMap<String, String>();
+
+			List<String> columnsName = new ArrayList<String>();
+
+			String QUERY = "select * from " + tableName + " order by timestamp asc";
+
+			while (columns.next()) {
+				String column = columns.getString("COLUMN_NAME");
+				columnsName.add(column);
+			}
+			
+			if(tableName.equals("floorsheet_live")) {
+				ec.setTablename(tableName);
+				try {
+					System.out.println("..................................."+tableName + ".................................");
+					ResultSet rs = stmt.executeQuery(QUERY);
+					while (rs.next()) {
+						rowMap = new LinkedHashMap<String, String>();
+						for(String s : columnsName) {
+							String rowValue = rs.getString(s);
+							rowMap.put(s, rowValue  );
+							totalRecords++;
+						}	
+						mapList.add(rowMap);
+						count++;
+					}
+					ec.setRows(mapList);
+
+				} catch (Exception e) {
+					// TODO: handle exception
+					e.printStackTrace();
+				}
+				allDataMap.add(ec);
+				
+			}else {
+				
+			}
+	
+		}
+		
+		System.out.println("Total Records: " + totalRecords);
+		
+		return allDataMap;
+	}
 // 
 
 	public List<Entities> showTables() throws Exception {
@@ -132,12 +132,16 @@ public class LiveTradingCalcApplication implements CommandLineRunner{
 			Map<String, String> rowMap = new HashMap<String, String>();
 			
 			List<String> columnsName = new ArrayList<String>();
+
 			
 			
 
 			if(tableName.equals("stock_data")) {
 				QUERY = "select * from " + tableName + " order by trading_date desc";
-			}else if(tableName.equals("stock_price_actions_derived")) {
+			}else if(tableName.equals("stock_data_adjusted")) {
+				QUERY = "select * from " + tableName + " order by trading_date desc";
+			}
+			else if(tableName.equals("stock_price_actions_derived")) {
 				QUERY = "select * from " + tableName;
 			}else if(tableName.equals("tearsheetpercentileindicatortable")) {
 				QUERY = "select * from " + tableName;
@@ -185,6 +189,7 @@ public class LiveTradingCalcApplication implements CommandLineRunner{
 			}
 			
 			if(tableName.equals("stock_data") 
+					|| tableName.equals("stock_price_actions_derived")
 					|| tableName.equals("stocksymbolsforsearchbox")
 					|| tableName.equals("tearsheet_eps")
 					|| tableName.equals("tearsheet_pe")
@@ -243,7 +248,7 @@ public class LiveTradingCalcApplication implements CommandLineRunner{
     
     @Override
     public void run(String... args) throws Exception {
-//    	showLiveTradingTables();
+    	showLiveTradingTables();
         showTables();
     }
 
